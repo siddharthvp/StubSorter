@@ -1,6 +1,14 @@
 // <nowiki>
 $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), $.ready).then(function() {
 
+	// auto start the script when navigating to an article from CAT:STUBS
+	if (mw.config.get('wgPageName') === 'Category:Stubs') {
+		$('#mw-pages li a').each(function(i,e) {
+			e.href += '?startstubsorter=y';
+		});
+		return;
+	}
+
 	if (
 	   (mw.config.get('wgNamespaceNumber') !== 0 && mw.config.get('wgPageName') !== 'Wikipedia:Sandbox') ||  // non-articles
 		mw.config.get('wgRevisionId') === 0 ||  // non-existent articles
@@ -34,10 +42,18 @@ $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), 
 					"srsort": "relevance"
 				};
 				switch (searchType) {
-					case 'prefix': query.srsearch += 'prefix:"Template:' + searchStr + '"'; break;
-					case 'intitle': query.srsearch += 'intitle:"' + searchStr + '"'; break;
-					case 'regex': query.srsearch += 'intitle:/' + mw.RegExp.escape(searchStr) + '/i'; break;
+					case 'prefix':
+						query.srsearch += 'prefix:"Template:' + searchStr + '"';
+						break;
+					case 'intitle':
+						var searchStrWords = searchStr.split(' ').filter(function(e) { return !/^\s*$/.test(e); });
+						query.srsearch += 'intitle:"' + searchStrWords.join('" intitle:"') + '"';
+						break;
+					case 'regex':
+						query.srsearch += 'intitle:/' + mw.RegExp.escape(searchStr) + '/i';
+						break;
 				}
+
 				api.get(query).then(function(response) {
 					if (response && response.query && response.query.search) {
 						resolve(response.query.search.map( function(e) {
@@ -178,11 +194,14 @@ $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), 
 				$status.text('Saving page...');
 				var pageText = revision.content;
 
-				var tagsBefore = pageText.match(/\{\{.*?stub\}\}/g) || [];
+				var tagsBefore = (pageText.match(/\{\{[^{]*?[sS]tub(?:\|.*?)?\}\}/g) || []).map(function(e) {
+					// capitalise first char after {{
+					return e[0] + e[1] + e[2].toUpperCase() + e.slice(3);
+				});
 				var tagsAfter = $select.val().map(function(e) { return '{{' + e + '}}'; });
 
 				// remove all stub tags
-				pageText = pageText.replace(/\{\{.*?stub\}\}(\s*)?/g, '').trim();
+				pageText = pageText.replace(/\{\{[^{]*[sS]tub(\|.*?)?\}\}\s*/g, '').trim();
 
 				// add selected stub tags
 				pageText += '\n\n\n' + tagsAfter.join('\n'); 	// per [[MOS:LAYOUT]]
@@ -342,6 +361,10 @@ $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), 
 		});
 
 	});
+
+	if (mw.util.getParamValue('startstubsorter')) {
+		setTimeout( function() { $('#ca-stub').click(); }, 1000);
+	}
 
 	// utility function to get unique elements from 2 arrays
 	function uniqElements(arr1, arr2) {
