@@ -1,9 +1,16 @@
+/**
+ * Ajax-based stub tag manager
+ *
+ * See [[User:SD0001/StubSorter]] for details and installation instructions.
+ *
+ */
+
 // <nowiki>
 $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), $.ready).then(function() {
 
 	// auto start the script when navigating to an article from CAT:STUBS
 	if (mw.config.get('wgPageName') === 'Category:Stubs') {
-		$('#mw-pages li a').each(function(i,e) {
+		$('#mw-pages li a').each(function(_, e) {
 			e.href += '?startstubsorter=y';
 		});
 		return;
@@ -50,7 +57,7 @@ $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), 
 						query.srsearch += 'intitle:"' + searchStrWords.join('" intitle:"') + '"';
 						break;
 					case 'regex':
-						query.srsearch += 'intitle:/' + mw.RegExp.escape(searchStr) + '/i';
+						query.srsearch += 'intitle:/' + mw.util.escapeRegExp(searchStr) + '/i';
 						break;
 				}
 
@@ -237,12 +244,13 @@ $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), 
 					window.location.reload(true);
 				}, 500);
 			}).fail(function(e) {
-				$status.text('Save failed. Please try again. ')
-						.attr('id', 'stub-sorter-error')
-						.css({
-							'color': 'red',
-							'font-weight': 'bold'
-						});
+				$status.text('Save failed. Please try again.')
+					.attr('id', 'stub-sorter-error')
+					.css({
+						'color': 'red',
+						'font-weight': 'bold',
+						'padding-right': '5px'
+					});
 				console.error(e);
 				setTimeout(function() {
 					$status.before($save);
