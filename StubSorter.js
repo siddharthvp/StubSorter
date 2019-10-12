@@ -250,7 +250,7 @@ $.when(mw.loader.using(['mediawiki.util', 'mediawiki.api', 'mediawiki.Title', 'j
 			}).then(function() {
 				$status.text('Done. Reloading page...');
 				setTimeout(function() {
-					window.location.reload(true);
+					window.location.href = mw.util.getUrl(mw.config.get('wgPageName'));
 				}, 500);
 			}).fail(function(e) {
 				$status.text('Save failed. Please try again.')
