@@ -6,7 +6,7 @@
  */
 
 // <nowiki>
-$.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), $.ready).then(function() {
+$.when(mw.loader.using(['mediawiki.util', 'mediawiki.api', 'mediawiki.Title', 'jquery.chosen']), $.ready).then(function() {
 
 	// auto start the script when navigating to an article from CAT:STUBS
 	if (mw.config.get('wgPageName') === 'Category:Stubs') {
@@ -16,11 +16,12 @@ $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), 
 		return;
 	}
 
-	if (
-	   (mw.config.get('wgNamespaceNumber') !== 0 && mw.config.get('wgPageName') !== 'Wikipedia:Sandbox') ||  // non-articles
-		mw.config.get('wgRevisionId') === 0 ||  // non-existent articles
-		mw.config.get('wgCurRevisionId') !== mw.config.get('wgRevisionId')  // old revisions
-	) return;
+	// show only on existing articles, and my sandbox (for testing)
+	if ((mw.config.get('wgNamespaceNumber') !== 0 && mw.config.get('wgPageName') !== 'User:SD0001/sandbox') ||
+		mw.config.get('wgCurRevisionId') === 0) {
+
+		return;
+	}
 
 	$(mw.util.addPortletLink(getPref('portlet', 'p-cactions'), '#', 'Stub Sort', 'ca-stub', 'Add or remove stub tags')).click(function(e) {
 		e.preventDefault();
@@ -28,13 +29,9 @@ $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), 
 		// if already present, don't duplicate
 		if ( $('#stub-sorter-wrapper').length !== 0 ) return;
 
-		var api = new mw.Api( {
-			ajax: {
-				headers: {
-					'Api-User-Agent': '[[w:User:SD0001/StubSorter.js]]'
-				}
-			}
-		} );
+		var api = new mw.Api({
+			ajax: { headers: { 'Api-User-Agent': '[[w:User:SD0001/StubSorter.js]]' } }
+		});
 
 		function getStubsBy(searchType, searchStr, extended) {
 			return new Promise(function(resolve, reject) {
@@ -114,15 +111,27 @@ $.when(mw.loader.using([ 'mediawiki.util', 'mediawiki.api', 'jquery.chosen' ]), 
 
 		var $select = $('#stub-sorter-select');
 
-		var existingStubs = $('.stub .hlist .nv-view a').map(function(i,e) {
-			return e.title.slice(9);
-		}).get();
+		function selectExistingStubTags($html) {
+			$html.find('.stub .hlist .nv-view a').each(function(_, e) {
+				var template = e.title.slice('Template:'.length);
+				$select.append(
+					$('<option>').text(template).val(template).attr('selected', 'true')
+				);
+			});
+		}
 
-		existingStubs.forEach(function(e) {
-			$select.append(
-				$('<option>').text(e).val(e).attr('selected', 'true')
-			);
-		});
+		if (mw.config.get('wgCurRevisionId') === mw.config.get('wgRevisionId')) {
+			// Viewing the current version of the page, no need for api call to get the page html
+			selectExistingStubTags($('.mw-parser-output'));
+		} else {
+			// In edit/history/diff/oldrevision mode, get the page html by api call
+			api.parse(new mw.Title(mw.config.get('wgPageName'))).then(function(html) {
+				selectExistingStubTags($(html));
+				$select.trigger('chosen:updated');
+				$select.trigger('click');
+				$input.focus();
+			});
+		}
 
 		$select.chosen({
 			search_contains: true,
