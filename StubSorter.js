@@ -198,6 +198,7 @@ $.when(mw.loader.using(['mediawiki.util', 'mediawiki.api', 'mediawiki.Title', 'j
 			.text('Save').css({
 				'float': 'right'
 			})
+			.attr('accesskey', 's')
 			.click(submit)
 			.insertAfter($('#stub_sorter_select_chosen .chosen-choices'));
 		function submit() {
